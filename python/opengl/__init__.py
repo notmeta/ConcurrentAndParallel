@@ -1,2 +1,5 @@
-WIDTH = 1024
-HEIGHT = 1024
+import random
+
+WIDTH = 512
+HEIGHT = 512
+RANDOM = random.SystemRandom()

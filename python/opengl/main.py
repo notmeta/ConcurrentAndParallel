@@ -1,12 +1,12 @@
 import math
-import random
 import sys
 from typing import List
 
 import OpenGL.GL as gl
 import OpenGL.GLUT as glut
+import numpy as np
 
-from opengl import WIDTH, HEIGHT
+from opengl import WIDTH, HEIGHT, RANDOM
 from opengl.colour import Colour
 from particle import Particle
 
@@ -14,49 +14,54 @@ _TRIANGLE_AMOUNT = 32
 _TWICE_PI = 2.0 * math.pi
 
 _particles = []  # type: List[Particle]
-_NUMBER_OF_PARTICLES = 250
+_NUMBER_OF_PARTICLES = 5000
+
+_zeroes = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
+_frames = 0
+fps = 0
 
 
 def get_coord(position, bound):
     return (2 / bound) * position + -1
 
 
-def draw_circle(x: float, y: float, radius: float, triangles: int, colour: Colour):
-    x = get_coord(x, WIDTH)
-    y = get_coord(y, HEIGHT)
+def get_fps(_):
+    global _frames, fps
 
-    # gl.glColor3f(colour.red, colour.green, colour.blue)
-    gl.glColor3f(x, y, abs(x - y))
-    gl.glBegin(gl.GL_TRIANGLE_FAN)
-    gl.glVertex3f(x, y, 0)
-    for i in range(0, triangles + 1):
-        gl.glVertex2f(
-            x + ((0 + radius) * math.cos(i * _TWICE_PI / triangles)),
-            y + ((0 - radius) * math.sin(i * _TWICE_PI / triangles))
-        )
-    gl.glEnd()
+    fps = _frames
+    _frames = 0
+    glut.glutTimerFunc(1000, get_fps, 0)
+
+
+def render_string(text: str, x: int, y: int):
+    gl.glColor3f(1, 1, 0)
+    gl.glRasterPos2f(x, y)
+
+    for i in range(len(text)):
+        glut.glutBitmapCharacter(gl.OpenGL.GLUT.fonts.GLUT_BITMAP_HELVETICA_18, ord(text[i]))
 
 
 def display_callback():
+    global _frames, _zeroes
+
+    canvas = _zeroes.copy()
+
     gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
     gl.glLoadIdentity()
 
     for p in _particles:
-        draw_circle(p.x, p.y, p.radius, p.triangles, p.colour)
-        # if random.random() >= 0.1:
+        canvas[p.x - 1][p.y - 1] = p.colour.as_array()
         p.move()
 
-    # draw_circle(0, 0, 0.01, Colour.from_int(100, 100, 190))
-    # draw_circle(WIDTH, HEIGHT, 0.01, Colour.from_int(100, 100, 190))
-    # draw_circle(WIDTH / 2, HEIGHT / 2, 0.01, Colour.from_int(100, 100, 190))
-
-    # time.sleep(0.008)
-
+    gl.glRasterPos2i(-1, -1)
+    gl.glDrawPixels(WIDTH, HEIGHT, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, canvas)
+    render_string(str(fps), get_coord(10, WIDTH), get_coord(HEIGHT - 18, HEIGHT))
     glut.glutSwapBuffers()
+
+    _frames += 1
 
 
 def reshape_callback(w: int, h: int):
-    # gl.glClearColor(1, 1, 1, 1)
     gl.glClearColor(0, 0, 0, 0)
     gl.glViewport(0, 0, w, h)
     gl.glMatrixMode(gl.GL_PROJECTION)
@@ -74,9 +79,11 @@ def keyboard_callback(key, x, y):
 
 def init_particles():
     for i in range(0, _NUMBER_OF_PARTICLES):
-        p = Particle(WIDTH / 2, HEIGHT / 2, Colour(random.random(), random.random(), random.random()))
-
-        p.radius = random.random() / 32
+        p = Particle(
+            int(WIDTH / 2),
+            int(HEIGHT / 2),
+            Colour(RANDOM.random() * 255, RANDOM.random() * 255, RANDOM.random() * 255)
+        )
 
         _particles.append(p)
 
@@ -93,4 +100,5 @@ if __name__ == "__main__":
     glut.glutIdleFunc(display_callback)
     glut.glutReshapeFunc(reshape_callback)
     glut.glutKeyboardFunc(keyboard_callback)
+    glut.glutTimerFunc(1000, get_fps, 0)
     glut.glutMainLoop()

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+from typing import List
+
 
 class Colour(object):
 
-    def __init__(self, red: float, green: float, blue: float):
-        self.red = red
-        self.green = green
-        self.blue = blue
+    def __init__(self, red: int, green: int, blue: int):
+        self.red = int(red)
+        self.green = int(green)
+        self.blue = int(blue)
 
-    @classmethod
-    def from_int(cls, red: int, green: int, blue: int) -> Colour:
-        return Colour(red / 255, green / 255, blue / 255)
+    def as_array(self) -> List[int]:
+        return [self.red, self.green, self.blue, 0]  # 0 for alpha

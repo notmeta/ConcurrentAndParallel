@@ -10,17 +10,12 @@ class Particle(object):
         self.x = x
         self.y = y
         self.colour = colour
-        self.radius = 0.013
-
-        self.triangles = int(self.radius * 4000) + 1
 
     def move(self):
-        modifier = 4
+        modifier = 8
 
-        self.x += (random.random() * modifier - (modifier / 2))
-        self.y += (random.random() * modifier - (modifier / 2))
-
-        # print(self.x)
+        self.x += int(random.random() * modifier - (modifier / 2))
+        self.y += int(random.random() * modifier - (modifier / 2))
 
         self.x = max(min(WIDTH, self.x), 0)
         self.y = max(min(HEIGHT, self.y), 0)
