@@ -1,5 +1,7 @@
 import math
 import sys
+import threading
+import time
 from typing import List
 
 import OpenGL.GL as gl
@@ -14,11 +16,13 @@ _TRIANGLE_AMOUNT = 32
 _TWICE_PI = 2.0 * math.pi
 
 _particles = []  # type: List[Particle]
-_NUMBER_OF_PARTICLES = 5000
+_NUMBER_OF_PARTICLES = 3000
 
 _zeroes = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
 _frames = 0
 fps = 0
+
+list_of_threads = []  # type: List[threading.Thread]
 
 
 def get_coord(position, bound):
@@ -50,8 +54,7 @@ def display_callback():
     gl.glLoadIdentity()
 
     for p in _particles:
-        canvas[p.x - 1][p.y - 1] = p.colour.as_array()
-        p.move()
+        canvas[int(p.x) - 1][int(p.y) - 1] = p.colour.as_array()
 
     gl.glRasterPos2i(-1, -1)
     gl.glDrawPixels(WIDTH, HEIGHT, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, canvas)
@@ -71,9 +74,7 @@ def reshape_callback(w: int, h: int):
 
 
 def keyboard_callback(key, x, y):
-    if key == b'\033':
-        sys.exit()
-    elif key == b'q':
+    if key == b'\033' or key == b'q':
         sys.exit()
 
 
@@ -86,6 +87,17 @@ def init_particles():
         )
 
         _particles.append(p)
+
+    t = threading.Thread(target=move_particles, args=())
+    list_of_threads.append(t)
+    t.start()
+
+
+def move_particles():
+    while True:
+        time.sleep(0.01)
+        for p in _particles:
+            p.move()
 
 
 if __name__ == "__main__":
@@ -102,3 +114,6 @@ if __name__ == "__main__":
     glut.glutKeyboardFunc(keyboard_callback)
     glut.glutTimerFunc(1000, get_fps, 0)
     glut.glutMainLoop()
+
+    for t in list_of_threads:
+        t.join()
