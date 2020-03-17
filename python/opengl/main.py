@@ -54,7 +54,7 @@ def display_callback():
     gl.glLoadIdentity()
 
     for p in _particles:
-        canvas[int(p.x) - 1][int(p.y) - 1] = p.colour.as_array()
+        canvas[(int(p.x) - 1) % WIDTH][(int(p.y) - 1) % HEIGHT] = p.colour.as_array()
 
     gl.glRasterPos2i(-1, -1)
     gl.glDrawPixels(WIDTH, HEIGHT, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, canvas)
@@ -80,9 +80,15 @@ def keyboard_callback(key, x, y):
 
 def init_particles():
     for i in range(0, _NUMBER_OF_PARTICLES):
+        vr = 0.1 * np.sqrt(RANDOM.random()) + 0.05
+        vphi = 2 * np.pi * RANDOM.random()
+        vx, vy = vr * np.cos(vphi), vr * np.sin(vphi)
+
         p = Particle(
-            int(WIDTH / 2),
-            int(HEIGHT / 2),
+            RANDOM.random() * WIDTH,
+            RANDOM.random() * HEIGHT,
+            vx,
+            vy,
             Colour(RANDOM.random() * 255, RANDOM.random() * 255, RANDOM.random() * 255)
         )
 
@@ -97,7 +103,7 @@ def move_particles():
     while True:
         time.sleep(0.01)
         for p in _particles:
-            p.move()
+            p.move(7)
 
 
 if __name__ == "__main__":
