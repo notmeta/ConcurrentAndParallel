@@ -46,6 +46,9 @@ class Particle(object):
     def vy(self, value):
         self.v[1] = value
 
+    def overlaps(self, other):
+        return np.hypot(*(self.r - other.r)) < self.radius + other.radius
+
     def move(self, dt: float):
         # self.r += self.v * dt
         np.add(self.r, self.v * dt, out=self.r, casting="unsafe")

@@ -2,6 +2,7 @@ import math
 import sys
 import threading
 import time
+from itertools import combinations
 from typing import List
 
 import OpenGL.GL as gl
@@ -16,7 +17,7 @@ _TRIANGLE_AMOUNT = 32
 _TWICE_PI = 2.0 * math.pi
 
 _particles = []  # type: List[Particle]
-_NUMBER_OF_PARTICLES = 3000
+_NUMBER_OF_PARTICLES = 100
 
 _zeroes = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
 _frames = 0
@@ -99,11 +100,31 @@ def init_particles():
     t.start()
 
 
+def change_velocities(p1, p2):
+    m1, m2 = p1.mass, p2.mass
+    M = m1 + m2
+    r1, r2 = p1.r, p2.r
+    d = np.linalg.norm(r1 - r2) ** 2
+    v1, v2 = p1.v, p2.v
+    u1 = v1 - 2 * m2 / M * np.dot(v1 - v2, r1 - r2) / d * (r1 - r2)
+    u2 = v2 - 2 * m1 / M * np.dot(v2 - v1, r2 - r1) / d * (r2 - r1)
+    p1.v = u1
+    p2.v = u2
+
+
+def handle_collisions():
+    pairs = combinations(range(_NUMBER_OF_PARTICLES), 2)
+    for i, j in pairs:
+        if _particles[i].overlaps(_particles[j]):
+            change_velocities(_particles[i], _particles[j])
+
+
 def move_particles():
     while True:
         time.sleep(0.01)
         for p in _particles:
             p.move(7)
+        handle_collisions()
 
 
 if __name__ == "__main__":
