@@ -1,8 +1,8 @@
-import math
 import sys
 import threading
 import time
 from itertools import combinations
+from queue import Queue
 from typing import List
 
 import OpenGL.GL as gl
@@ -13,16 +13,14 @@ from opengl import WIDTH, HEIGHT, RANDOM
 from opengl.colour import Colour
 from particle import Particle
 
-_TRIANGLE_AMOUNT = 32
-_TWICE_PI = 2.0 * math.pi
-
 _particles = []  # type: List[Particle]
 _NUMBER_OF_PARTICLES = 100
 
 _zeroes = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
 _frames = 0
-fps = 0
+_gravity_queue = Queue(maxsize=1)
 
+fps = 0
 list_of_threads = []  # type: List[threading.Thread]
 
 
@@ -38,12 +36,20 @@ def get_fps(_):
     glut.glutTimerFunc(1000, get_fps, 0)
 
 
-def render_string(text: str, x: int, y: int):
-    gl.glColor3f(1, 1, 0)
+def render_string(text: str, x: int, y: int, colour: Colour = Colour(1, 1, 0)):
+    gl.glColor3f(colour.red, colour.green, colour.blue)
     gl.glRasterPos2f(x, y)
 
     for i in range(len(text)):
         glut.glutBitmapCharacter(gl.OpenGL.GLUT.fonts.GLUT_BITMAP_HELVETICA_18, ord(text[i]))
+
+
+def write_controls_text():
+    render_string("g - Enable gravity",
+                  get_coord(10, WIDTH),
+                  get_coord(HEIGHT - 25, HEIGHT),
+                  Colour(1, 1, 1)
+                  )
 
 
 def display_callback():
@@ -59,7 +65,10 @@ def display_callback():
 
     gl.glRasterPos2i(-1, -1)
     gl.glDrawPixels(WIDTH, HEIGHT, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, canvas)
-    render_string(str(fps), get_coord(10, WIDTH), get_coord(HEIGHT - 18, HEIGHT))
+
+    render_string(str(fps), get_coord(WIDTH - 40, WIDTH), get_coord(HEIGHT - 25, HEIGHT))
+    write_controls_text()
+
     glut.glutSwapBuffers()
 
     _frames += 1
@@ -77,6 +86,8 @@ def reshape_callback(w: int, h: int):
 def keyboard_callback(key, x, y):
     if key == b'\033' or key == b'q':
         sys.exit()
+    elif key == b'g':
+        _gravity_queue.put(1, block=False)
 
 
 def init_particles():
@@ -95,9 +106,21 @@ def init_particles():
 
         _particles.append(p)
 
-    t = threading.Thread(target=move_particles, args=())
+    t = threading.Thread(target=move_particles, args=(), name="MovementThread")
     list_of_threads.append(t)
     t.start()
+
+    t = threading.Thread(target=listen_for_gravity, args=(), name="GravityThread")
+    list_of_threads.append(t)
+    t.start()
+
+
+def listen_for_gravity():
+    while True:
+        _ = _gravity_queue.get(block=True)
+
+        for p in _particles:
+            p.vx -= 0.098
 
 
 def change_velocities(p1, p2):
@@ -134,7 +157,7 @@ if __name__ == "__main__":
     glut.glutInitDisplayMode(glut.GLUT_DOUBLE | glut.GLUT_RGBA | glut.GLUT_DEPTH)
     glut.glutInitWindowSize(WIDTH, HEIGHT)
     glut.glutInitWindowPosition(100, 100)
-    glut.glutCreateWindow('Example window')
+    glut.glutCreateWindow('Particles')
     glut.glutDisplayFunc(display_callback)
     glut.glutIdleFunc(display_callback)
     glut.glutReshapeFunc(reshape_callback)
@@ -142,5 +165,5 @@ if __name__ == "__main__":
     glut.glutTimerFunc(1000, get_fps, 0)
     glut.glutMainLoop()
 
-    for t in list_of_threads:
-        t.join()
+    # for t in list_of_threads:
+    #     t.join()
