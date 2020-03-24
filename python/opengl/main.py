@@ -14,7 +14,8 @@ from opengl.colour import Colour
 from particle import Particle
 
 _particles = []  # type: List[Particle]
-_NUMBER_OF_PARTICLES = 100
+_NUMBER_OF_PARTICLES = 5
+_PARTICLES_LOSE_VELOCITY = True
 
 _zeroes = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
 _frames = 0
@@ -45,11 +46,10 @@ def render_string(text: str, x: int, y: int, colour: Colour = Colour(1, 1, 0)):
 
 
 def write_controls_text():
-    render_string("g - Enable gravity",
-                  get_coord(10, WIDTH),
-                  get_coord(HEIGHT - 25, HEIGHT),
-                  Colour(1, 1, 1)
-                  )
+    render_string(text="g - Enable gravity",
+                  x=get_coord(10, WIDTH),
+                  y=get_coord(HEIGHT - 25, HEIGHT),
+                  colour=Colour(1, 1, 1))
 
 
 def display_callback():
@@ -114,13 +114,28 @@ def init_particles():
     list_of_threads.append(t)
     t.start()
 
+    if _PARTICLES_LOSE_VELOCITY:
+        t = threading.Thread(target=loss_of_velocity, args=(), name="VelocityLossThread")
+        list_of_threads.append(t)
+        t.start()
+
+
+def loss_of_velocity():
+    while True:
+        for p in _particles:
+            if p.vx != 0:
+                p.vx = max((p.vx - 0.001), 0) if p.vx > 0 else min((p.vx + 0.001), 0)
+            if p.vy != 0:
+                p.vy = max((p.vy - 0.001), 0) if p.vy > 0 else min((p.vy + 0.001), 0)
+        time.sleep(0.05)
+
 
 def listen_for_gravity():
     while True:
         _ = _gravity_queue.get(block=True)
 
         for p in _particles:
-            p.vx -= 0.098
+            p.vx -= 0.1
 
 
 def change_velocities(p1, p2):
