@@ -3,3 +3,5 @@ import random
 WIDTH = 512
 HEIGHT = 512
 RANDOM = random.SystemRandom()
+NUMBER_OF_PARTICLES = 1000
+MOVEMENT_WORKER_THREADS = 8
