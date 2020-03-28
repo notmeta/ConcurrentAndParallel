@@ -1,3 +1,4 @@
+import logging
 import sys
 import threading
 import time
@@ -9,16 +10,17 @@ import OpenGL.GL as gl
 import OpenGL.GLUT as glut
 import numpy as np
 
-from opengl import WIDTH, HEIGHT, RANDOM
+from opengl import WIDTH, HEIGHT, RANDOM, NUMBER_OF_PARTICLES, MOVEMENT_WORKER_THREADS
 from opengl.colour import Colour
 from particle import Particle
+from particle.movement import Worker
 
-_particles = []  # type: List[Particle]
-_NUMBER_OF_PARTICLES = 100
+_PARTICLES_LOSE_VELOCITY = False
 
 _zeroes = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
 _frames = 0
 _gravity_queue = Queue(maxsize=1)
+_particles = []  # type: List[Particle]
 
 fps = 0
 list_of_threads = []  # type: List[threading.Thread]
@@ -45,11 +47,10 @@ def render_string(text: str, x: int, y: int, colour: Colour = Colour(1, 1, 0)):
 
 
 def write_controls_text():
-    render_string("g - Enable gravity",
-                  get_coord(10, WIDTH),
-                  get_coord(HEIGHT - 25, HEIGHT),
-                  Colour(1, 1, 1)
-                  )
+    render_string(text="g - Enable gravity",
+                  x=get_coord(10, WIDTH),
+                  y=get_coord(HEIGHT - 25, HEIGHT),
+                  colour=Colour(1, 1, 1))
 
 
 def display_callback():
@@ -91,7 +92,7 @@ def keyboard_callback(key, x, y):
 
 
 def init_particles():
-    for i in range(0, _NUMBER_OF_PARTICLES):
+    for i in range(0, NUMBER_OF_PARTICLES):
         vr = 0.1 * np.sqrt(RANDOM.random()) + 0.05
         vphi = 2 * np.pi * RANDOM.random()
         vx, vy = vr * np.cos(vphi), vr * np.sin(vphi)
@@ -114,13 +115,53 @@ def init_particles():
     list_of_threads.append(t)
     t.start()
 
+    if _PARTICLES_LOSE_VELOCITY:
+        t = threading.Thread(target=loss_of_velocity, args=(), name="VelocityLossThread")
+        list_of_threads.append(t)
+        t.start()
+
+
+def handle_collisions(particle_combinations):
+    for i, j in particle_combinations:
+        if _particles[i].overlaps(_particles[j]):
+            change_velocities(_particles[i], _particles[j])
+
+
+def move_particles():
+    workers = []
+    start_event = threading.Event()
+    particle_combinations = list(combinations(range(NUMBER_OF_PARTICLES), 2))
+
+    for i in range(1, MOVEMENT_WORKER_THREADS + 1):
+        worker = Worker(i, start_event, _particles)
+        workers.append(worker)
+        worker.start()
+
+    while True:
+        start_event.set()
+        for w in workers:
+            w.finished()
+        handle_collisions(particle_combinations)
+        time.sleep(0.01)
+
+
+def loss_of_velocity():
+    while True:
+        for p in _particles:
+            if p.vx != 0:
+                p.vx = max((p.vx - 0.001), 0) if p.vx > 0 else min((p.vx + 0.001), 0)
+            if p.vy != 0:
+                p.vy = max((p.vy - 0.001), 0) if p.vy > 0 else min((p.vy + 0.001), 0)
+        time.sleep(0.05)
+
 
 def listen_for_gravity():
+    logging.info("Waiting for gravity button event")
     while True:
         _ = _gravity_queue.get(block=True)
 
         for p in _particles:
-            p.vx -= 0.098
+            p.vx -= 0.1
 
 
 def change_velocities(p1, p2):
@@ -135,22 +176,13 @@ def change_velocities(p1, p2):
     p2.v = u2
 
 
-def handle_collisions():
-    pairs = combinations(range(_NUMBER_OF_PARTICLES), 2)
-    for i, j in pairs:
-        if _particles[i].overlaps(_particles[j]):
-            change_velocities(_particles[i], _particles[j])
-
-
-def move_particles():
-    while True:
-        time.sleep(0.01)
-        for p in _particles:
-            p.move(7)
-        handle_collisions()
-
-
 if __name__ == "__main__":
+    logging.basicConfig(format="%(asctime)s [%(threadName)s] | %(message)s", level=logging.INFO, datefmt="%H:%M:%S")
+
+    logging.info(f"Number of particles: {NUMBER_OF_PARTICLES}")
+    logging.info(f"Particle movement workers: {MOVEMENT_WORKER_THREADS}")
+    logging.info(f"Particles lose velocity over time: {_PARTICLES_LOSE_VELOCITY}")
+
     init_particles()
 
     glut.glutInit()
