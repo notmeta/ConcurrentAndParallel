@@ -10,12 +10,13 @@ import OpenGL.GL as gl
 import OpenGL.GLUT as glut
 import numpy as np
 
-from opengl import WIDTH, HEIGHT, RANDOM, NUMBER_OF_PARTICLES, MOVEMENT_WORKER_THREADS
+from opengl import WIDTH, HEIGHT, RANDOM, NUMBER_OF_PARTICLES, MOVEMENT_WORKER_THREADS, WINDOW_WIDTH, WINDOW_HEIGHT, \
+    SCALE_X, SCALE_Y
 from opengl.colour import Colour
 from particle import Particle
 from particle.movement import Worker
 
-_PARTICLES_LOSE_VELOCITY = False
+_PARTICLES_LOSE_VELOCITY = True
 
 _zeroes = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
 _frames = 0
@@ -65,6 +66,7 @@ def display_callback():
         canvas[(int(p.x) - 1) % WIDTH][(int(p.y) - 1) % HEIGHT] = p.colour.as_array()
 
     gl.glRasterPos2i(-1, -1)
+    gl.glPixelZoom(SCALE_X, SCALE_Y)
     gl.glDrawPixels(WIDTH, HEIGHT, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, canvas)
 
     render_string(str(fps), get_coord(WIDTH - 40, WIDTH), get_coord(HEIGHT - 25, HEIGHT))
@@ -187,7 +189,7 @@ if __name__ == "__main__":
 
     glut.glutInit()
     glut.glutInitDisplayMode(glut.GLUT_DOUBLE | glut.GLUT_RGBA | glut.GLUT_DEPTH)
-    glut.glutInitWindowSize(WIDTH, HEIGHT)
+    glut.glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
     glut.glutInitWindowPosition(100, 100)
     glut.glutCreateWindow('Particles')
     glut.glutDisplayFunc(display_callback)

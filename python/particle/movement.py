@@ -28,6 +28,6 @@ class Worker(threading.Thread):
             start_event.wait()
 
             for p in particles[from_index:to_index]:
-                p.move(3)
+                p.move(1)
 
             self._finished_event.set()
