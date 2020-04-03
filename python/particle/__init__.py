@@ -2,6 +2,7 @@ import numpy as np
 
 from opengl import WIDTH, HEIGHT
 from opengl.colour import Colour
+from .mode import ColourMode
 
 
 class Particle(object):
@@ -13,6 +14,8 @@ class Particle(object):
         self.mass = self.radius ** 2
 
         self.colour = colour
+        self._solid_colour = colour
+        self._colour_mode = ColourMode.SOLID
 
     @property
     def x(self):
@@ -46,12 +49,17 @@ class Particle(object):
     def vy(self, value):
         self.v[1] = value
 
+    def set_colour_mode(self, col_mode: ColourMode):
+        self._colour_mode = col_mode
+        if col_mode == ColourMode.SOLID:
+            self.colour = self._solid_colour
+
     def overlaps(self, other):
         return np.hypot(*(self.r - other.r)) < self.radius + other.radius
 
     def move(self, dt: float):
-        # self.r += self.v * dt
-        np.add(self.r, self.v * dt, out=self.r, casting="unsafe")
+        self.r += self.v * dt
+        # np.add(self.r, self.v * dt, out=self.r, casting="unsafe")
 
         if self.x - self.radius < 0:
             self.x = self.radius
@@ -65,3 +73,9 @@ class Particle(object):
         if self.y + self.radius > HEIGHT:
             self.y = HEIGHT - self.radius
             self.vy = -self.vy
+
+        if self._colour_mode == ColourMode.VELOCITY:
+            col = min((abs(self.vx) + abs(self.vy)) * 750, 255)
+            col = max(col, 50)
+
+            self.colour = Colour(col, col, col)

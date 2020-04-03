@@ -14,17 +14,33 @@ from opengl import WIDTH, HEIGHT, RANDOM, NUMBER_OF_PARTICLES, MOVEMENT_WORKER_T
     SCALE_X, SCALE_Y
 from opengl.colour import Colour
 from particle import Particle
+from particle.mode import ColourMode
 from particle.movement import Worker
 
-_PARTICLES_LOSE_VELOCITY = True
+_PARTICLES_LOSE_VELOCITY = False
 
 _zeroes = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
 _frames = 0
 _gravity_queue = Queue(maxsize=1)
 _particles = []  # type: List[Particle]
 
+colour_mode = ColourMode.SOLID
+
 fps = 0
 list_of_threads = []  # type: List[threading.Thread]
+
+
+def set_colour_mode(mode: ColourMode):
+    global colour_mode
+
+    if mode == colour_mode:
+        return
+
+    colour_mode = mode
+    for p in _particles:
+        p.set_colour_mode(mode)
+
+    logging.info("Set colour mode to " + str(mode))
 
 
 def get_coord(position, bound):
@@ -64,7 +80,7 @@ def display_callback():
     gl.glLoadIdentity()
 
     for p in _particles:
-        canvas[(int(p.x) - 1) % WIDTH][(int(p.y) - 1) % HEIGHT] = p.colour.as_array()
+        canvas[int(p.x)][int(p.y)] = p.colour.as_array()
 
     gl.glRasterPos2i(-1, -1)
     gl.glPixelZoom(SCALE_X, SCALE_Y)
@@ -92,6 +108,10 @@ def keyboard_callback(key, x, y):
         sys.exit()
     elif key == b'g':
         _gravity_queue.put(1, block=False)
+    elif key == b'1':
+        set_colour_mode(ColourMode.VELOCITY)
+    elif key == b'0':
+        set_colour_mode(ColourMode.SOLID)
 
 
 def init_particles():
@@ -185,6 +205,10 @@ if __name__ == "__main__":
     logging.info(f"Number of particles: {NUMBER_OF_PARTICLES}")
     logging.info(f"Particle movement workers: {MOVEMENT_WORKER_THREADS}")
     logging.info(f"Particles lose velocity over time: {_PARTICLES_LOSE_VELOCITY}")
+    logging.info("Colour modes available:")
+
+    for mode in ColourMode:
+        logging.info(f"{ColourMode(mode).name} - {mode.value}")
 
     init_particles()
 
@@ -199,6 +223,3 @@ if __name__ == "__main__":
     glut.glutKeyboardFunc(keyboard_callback)
     glut.glutTimerFunc(1000, get_fps, 0)
     glut.glutMainLoop()
-
-    # for t in list_of_threads:
-    #     t.join()
