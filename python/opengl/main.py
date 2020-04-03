@@ -36,6 +36,7 @@ def get_fps(_):
 
     fps = _frames
     _frames = 0
+    logging.info(f"fps: {fps}")
     glut.glutTimerFunc(1000, get_fps, 0)
 
 
@@ -69,8 +70,8 @@ def display_callback():
     gl.glPixelZoom(SCALE_X, SCALE_Y)
     gl.glDrawPixels(WIDTH, HEIGHT, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, canvas)
 
-    render_string(str(fps), get_coord(WIDTH - 40, WIDTH), get_coord(HEIGHT - 25, HEIGHT))
-    write_controls_text()
+    # render_string(str(fps), get_coord(WIDTH - 40, WIDTH), get_coord(HEIGHT - 25, HEIGHT))
+    # write_controls_text()
 
     glut.glutSwapBuffers()
 
