@@ -32,10 +32,10 @@
 // includes, cuda
 #include <helper_cuda.h>
 
-#define PARTICLE_COUNT 50
+#define PARTICLE_COUNT 40
 
 sphere spheres[PARTICLE_COUNT];
-uint threadPerBlock = 25;
+uint threadPerBlock = 40;
 uint blocks = PARTICLE_COUNT / threadPerBlock;
 
 typedef unsigned int uint;
@@ -85,9 +85,6 @@ __global__ void d_render(uchar4 *d_output, uint width, uint height, hitable **d_
 
 extern "C"
 void onIdle() {
-    for (auto &sphere : spheres) {
-        sphere.move(0.005);
-    }
 }
 
 __global__ void create_world(sphere *d_spheres, hitable **d_list, hitable **d_world) {
@@ -118,13 +115,13 @@ __global__ void free_world(hitable **d_list, hitable **d_world) {
 }
 
 __global__ void move_particles(sphere *d_spheres) {
-//    int i = threadIdx.x + (blockDim.x * blockIdx.x);
-//    d_spheres[i].move(1);
+    int i = threadIdx.x + (blockDim.x * blockIdx.x);
+    d_spheres[i].move(0.5);
 }
 
 extern "C"
 void render(int width, int height, dim3 blockSize, dim3 gridSize, uchar4 *output) {
-    sphere *d_particleList;
+    sphere *d_particleList = nullptr;
     checkCudaErrors(cudaMalloc((void **) &d_particleList, PARTICLE_COUNT * sizeof(sphere)));
     checkCudaErrors(cudaMemcpy(d_particleList, spheres, PARTICLE_COUNT * sizeof(sphere), cudaMemcpyHostToDevice));
 
@@ -139,10 +136,10 @@ void render(int width, int height, dim3 blockSize, dim3 gridSize, uchar4 *output
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
-//    move_particles <<< blocks, threadPerBlock >>>(d_particleList);
-//
-//    checkCudaErrors(cudaGetLastError());
-//    checkCudaErrors(cudaDeviceSynchronize());
+    move_particles <<< blocks, threadPerBlock >>>(d_particleList);
+
+    checkCudaErrors(cudaGetLastError());
+    checkCudaErrors(cudaDeviceSynchronize());
 
     // call CUDA kernel, writing results to PBO memory
     d_render <<< gridSize, blockSize >>>(output, width, height, d_world);

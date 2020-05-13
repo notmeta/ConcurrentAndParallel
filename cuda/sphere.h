@@ -40,9 +40,9 @@ public:
 
     __device__ virtual bool hit(const ray &r, float tmin, float tmax, hit_record &rec) const;
 
-    virtual void move(float dt);
+    __device__ void move(float dt);
 
-    virtual void boundaryCheck();
+    __device__ void boundaryCheck();
 
     vec3 position;
     vec3 velocity;
@@ -77,12 +77,12 @@ __device__ bool sphere::hit(const ray &r, float t_min,
     return false;
 }
 
-void sphere::move(const float dt) {
+__device__ void sphere::move(const float dt) {
     this->position += velocity * dt;
     boundaryCheck();
 }
 
-void sphere::boundaryCheck() {
+__device__ void sphere::boundaryCheck() {
     if (position.x() - radius < MIN_X) {
         position.setX(radius + MIN_X);
         velocity.setX(-velocity.x());
