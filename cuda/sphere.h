@@ -10,8 +10,8 @@
 #define MIN_Y -18
 #define MAX_Y 12
 
-#define MIN_Z -50
-#define MAX_Z -5
+#define MIN_Z -40
+#define MAX_Z -10
 
 float random(double minBound, double maxBound) {
     std::random_device rd;
@@ -21,15 +21,16 @@ float random(double minBound, double maxBound) {
     return dist(mt);
 }
 
-class sphere : public hitable {
+class sphere {
 public:
     sphere() {
-        auto vr = 0.1 * sqrt(random(0, 1)) + 0.05;
-        auto vphi = 2 * M_PI * random(0, 1);
+        auto vr = 0.1 * sqrt(random(0, 3)) + 0.05;
+        auto vphi = 2 * M_PI * random(0, 3);
 
         position = vec3(random(MIN_X, MAX_X), random(MIN_Y, MAX_Y), random(MIN_Z, MAX_Z));
         velocity = vec3(vr * cos(vphi), vr * sin(vphi), vr * cos(vphi));
-        radius = random(0.5, 2);
+        radius = random(0.4, 2);
+//        radius = 0.3;
         mass = pow(radius, 2);
     };
 
@@ -38,7 +39,7 @@ public:
 
     };
 
-    __device__ virtual bool hit(const ray &r, float tmin, float tmax, hit_record &rec) const;
+    __device__ bool hit(const ray &r, float tmin, float tmax, hit_record &rec) const;
 
     __device__ void move(float dt);
 
@@ -51,8 +52,7 @@ public:
 
 };
 
-__device__ bool sphere::hit(const ray &r, float t_min,
-                            float t_max, hit_record &rec) const {
+__device__ bool sphere::hit(const ray &r, float t_min, float t_max, hit_record &rec) const {
     vec3 oc = r.origin() - position;
     float a = dot(r.direction(), r.direction());
     float b = dot(oc, r.direction());
