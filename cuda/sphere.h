@@ -28,7 +28,7 @@ public:
         auto vphi = 2 * M_PI * random(0, 1);
 
         position = vec3(random(MIN_X, MAX_X), random(MIN_Y, MAX_Y), random(MIN_Z, MAX_Z));
-        velocity = vec3(vr * cos(vphi), vr * sin(vphi), vr * tan(vphi));
+        velocity = vec3(vr * cos(vphi), vr * sin(vphi), vr * cos(vphi));
         radius = random(0.5, 2);
         mass = pow(radius, 2);
     };
