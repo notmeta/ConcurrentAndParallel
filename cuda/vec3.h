@@ -123,6 +123,10 @@ __host__ __device__ inline float dot(const vec3 &v1, const vec3 &v2) {
     return v1.e[0] * v2.e[0] + v1.e[1] * v2.e[1] + v1.e[2] * v2.e[2];
 }
 
+__host__ __device__ inline float linAlgNorm(const vec3 &v1) {
+    return dot(v1, v1);
+}
+
 __host__ __device__ inline vec3 cross(const vec3 &v1, const vec3 &v2) {
     return vec3((v1.e[1] * v2.e[2] - v1.e[2] * v2.e[1]),
                 (-(v1.e[0] * v2.e[2] - v1.e[2] * v2.e[0])),

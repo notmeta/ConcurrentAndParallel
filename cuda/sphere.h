@@ -31,7 +31,7 @@ public:
         velocity = vec3(vr * cos(vphi), vr * sin(vphi), vr * cos(vphi));
         colour = make_uchar4(random(0, 255), random(0, 255), random(0, 255), 0);
         originalColour = colour;
-        radius = random(0.3, 1);
+        radius = random(0.5, 2);
         mass = pow(radius, 2);
     };
 
@@ -41,8 +41,13 @@ public:
 
     __device__ void boundaryCheck();
 
+    __device__ bool overlaps(sphere *other);
+
+    __device__ void changeVelocities(sphere *other);
+
     vec3 position;
     vec3 velocity;
+    bool updated = false;
     uchar4 colour{};
     uchar4 originalColour{};
     float radius;
@@ -78,6 +83,7 @@ __device__ bool sphere::hit(const ray &r, float t_min, float t_max, hit_record &
 __device__ void sphere::move(const float dt) {
     this->position += velocity * dt;
     boundaryCheck();
+    updated = false;
 }
 
 __device__ void sphere::boundaryCheck() {
@@ -105,6 +111,34 @@ __device__ void sphere::boundaryCheck() {
         position.setZ(MAX_Z - radius);
         velocity.setZ(-velocity.z());
     }
+}
+
+__device__ void sphere::changeVelocities(sphere *other) {
+    auto combinedMass = mass + other->mass;
+    auto norm = linAlgNorm(position - other->position);
+    auto d = norm * norm;
+
+    auto u1 = velocity -
+              vec3(2, 2, 2) * other->mass / combinedMass * dot(velocity - other->velocity, position - other->position) /
+              d * (position - other->position);
+    auto u2 = other->velocity -
+              vec3(2, 2, 2) * mass / combinedMass * dot(other->velocity - velocity, other->position - position) / d *
+              (other->position - position);
+
+    velocity = u1;
+    other->velocity = u2;
+
+    updated = true;
+    other->updated = true;
+}
+
+__device__ bool sphere::overlaps(sphere *other) {
+    auto rSquared = radius + other->radius;
+    rSquared *= rSquared;
+
+    auto delta = other->position - position;
+
+    return dot(delta, delta) < rSquared;
 }
 
 

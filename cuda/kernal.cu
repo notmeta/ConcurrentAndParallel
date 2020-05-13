@@ -30,8 +30,9 @@
 // includes, cuda
 #include <helper_cuda.h>
 
-#define PARTICLE_COUNT 500
+#define PARTICLE_COUNT 200
 #define BACKGROUND_COLOUR make_uchar4(0, 0, 0, 0)
+#define PARTICLES_COLLIDE true
 
 sphere spheres[PARTICLE_COUNT];
 uint threadPerBlock = 25;
@@ -96,6 +97,24 @@ __global__ void move_particles(sphere *d_spheres) {
     d_spheres[i].move(0.5);
 }
 
+__global__ void handleCollisions(sphere *d_spheres) {
+    int i = threadIdx.x + (blockDim.x * blockIdx.x);
+
+    for (int j = 0; j < PARTICLE_COUNT; j++) {
+        if (i == j) { // it's checking itself
+            continue;
+        }
+        auto other = d_spheres[j];
+        if (other.updated) {
+            continue;
+        }
+        if (d_spheres[i].overlaps(&other)) {
+            d_spheres[i].changeVelocities(&other);
+            break;
+        }
+    }
+}
+
 extern "C"
 void render(int width, int height, dim3 blockSize, dim3 gridSize, uchar4 *output) {
     sphere *d_particleList = nullptr;
@@ -103,13 +122,18 @@ void render(int width, int height, dim3 blockSize, dim3 gridSize, uchar4 *output
     checkCudaErrors(cudaMemcpy(d_particleList, spheres, PARTICLE_COUNT * sizeof(sphere), cudaMemcpyHostToDevice));
 
     move_particles <<< blocks, threadPerBlock >>>(d_particleList);
-
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
     d_render <<< gridSize, blockSize >>>(output, width, height, d_particleList);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
+
+    if (PARTICLES_COLLIDE) {
+        handleCollisions <<< blocks, threadPerBlock >>>(d_particleList);
+        checkCudaErrors(cudaGetLastError());
+        checkCudaErrors(cudaDeviceSynchronize());
+    }
 
     checkCudaErrors(cudaMemcpy(spheres, d_particleList, PARTICLE_COUNT * sizeof(sphere), cudaMemcpyDeviceToHost));
     getLastCudaError("kernel failed");
