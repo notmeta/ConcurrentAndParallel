@@ -19,11 +19,9 @@
 #include <stdio.h>
 #include <string.h>
 
-// My Files
 #include "vec3.h"
 #include "sphere.h"
 #include "Ray.h"
-#include "hitable_list.h"
 #include "hitable.h"
 #include "random"
 
@@ -33,6 +31,7 @@
 #include <helper_cuda.h>
 
 #define PARTICLE_COUNT 500
+#define BACKGROUND_COLOUR make_uchar4(0, 0, 0, 0)
 
 sphere spheres[PARTICLE_COUNT];
 uint threadPerBlock = 25;
@@ -41,26 +40,25 @@ uint blocks = PARTICLE_COUNT / threadPerBlock;
 typedef unsigned int uint;
 typedef unsigned char uchar;
 
-__device__ vec3 castRay(const ray &r, sphere *d_spheres) {
+__device__ uchar4 castRay(const ray &r, sphere *d_spheres) {
     hit_record rec;
+    uchar4 colour;
+    bool hitSomething = false;
+    float closestParticleSoFar = FLT_MAX;
 
-    bool hit_anything = false;
-    float closest_so_far = FLT_MAX;
     for (int i = 0; i < PARTICLE_COUNT; i++) {
-        if (d_spheres[i].hit(r, 0, closest_so_far, rec)) {
-            hit_anything = true;
-            closest_so_far = rec.t;
+        if (d_spheres[i].hit(r, 0, closestParticleSoFar, rec)) {
+            colour = d_spheres[i].colour;
+            hitSomething = true;
+            closestParticleSoFar = rec.t;
             rec = rec;
         }
     }
 
-    if (hit_anything) {
-        return 0.5f * vec3(rec.normal.x() + 1.0f, rec.normal.y() + 1.0f, rec.normal.z() + 1.0f);
+    if (hitSomething) {
+        return colour;
     } else {
-//        vec3 unit_direction = unit_vector(r.direction());
-//        float t = 0.5f * (unit_direction.y() + 1.0f);
-//        return (1.0f - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
-        return vec3(0, 0, 0);
+        return BACKGROUND_COLOUR;
     }
 }
 
@@ -85,13 +83,8 @@ __global__ void d_render(uchar4 *d_output, uint width, uint height, sphere *d_sp
         r.O = eye;
         r.Dir = pixelPos - eye;
         //view direction along negtive z-axis!
-        vec3 col = castRay(r, d_spheres);
-        float red = col.x();
-        float green = col.y();
-        float blue = col.z();
-        d_output[i] = make_uchar4(red * 255, green * 255, blue * 255, 0);
+        d_output[i] = castRay(r, d_spheres);
     }
-
 }
 
 extern "C"

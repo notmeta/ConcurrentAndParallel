@@ -29,14 +29,10 @@ public:
 
         position = vec3(random(MIN_X, MAX_X), random(MIN_Y, MAX_Y), random(MIN_Z, MAX_Z));
         velocity = vec3(vr * cos(vphi), vr * sin(vphi), vr * cos(vphi));
-        radius = random(0.4, 2);
-//        radius = 0.3;
+        colour = make_uchar4(random(0, 255), random(0, 255), random(0, 255), 0);
+        originalColour = colour;
+        radius = random(0.3, 1);
         mass = pow(radius, 2);
-    };
-
-    __device__ sphere(vec3 pos, vec3 velocity, float r) : position(pos), velocity(velocity), radius(r),
-                                                          mass(pow(r, 2)) {
-
     };
 
     __device__ bool hit(const ray &r, float tmin, float tmax, hit_record &rec) const;
@@ -47,6 +43,8 @@ public:
 
     vec3 position;
     vec3 velocity;
+    uchar4 colour{};
+    uchar4 originalColour{};
     float radius;
     float mass;
 
