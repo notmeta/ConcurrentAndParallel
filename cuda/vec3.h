@@ -19,11 +19,17 @@ class vec3 {
 public:
     __host__ __device__ vec3() {}
 
-    __host__ __device__ vec3(float e0, float e1, float e2) {
-        e[0] = e0;
-        e[1] = e1;
-        e[2] = e2;
+    __host__ __device__ vec3(float x, float y, float z) {
+        e[0] = x;
+        e[1] = y;
+        e[2] = z;
     }
+
+    __host__ __device__ inline void setX(const float t) { e[0] = t; }
+
+    __host__ __device__ inline void setY(const float t) { e[1] = t; }
+
+    __host__ __device__ inline void setZ(const float t) { e[2] = t; }
 
     __host__ __device__ inline float x() const { return e[0]; }
 

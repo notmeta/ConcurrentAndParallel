@@ -25,27 +25,31 @@
 #include "Ray.h"
 #include "hitable_list.h"
 #include "hitable.h"
+#include "random"
 
 #include <helper_math.h>
 
 // includes, cuda
 #include <helper_cuda.h>
 
+#define PARTICLE_COUNT 50
+
+sphere spheres[PARTICLE_COUNT];
+uint threadPerBlock = 25;
+uint blocks = PARTICLE_COUNT / threadPerBlock;
+
 typedef unsigned int uint;
 typedef unsigned char uchar;
-
-//#include "bicubicTexture_kernel.cuh"
-
-cudaArray *d_imageArray = 0;
 
 __device__ vec3 castRay(const ray &r, hitable **world) {
     hit_record rec;
     if ((*world)->hit(r, 0.0, FLT_MAX, rec)) {
         return 0.5f * vec3(rec.normal.x() + 1.0f, rec.normal.y() + 1.0f, rec.normal.z() + 1.0f);
     } else {
-        vec3 unit_direction = unit_vector(r.direction());
-        float t = 0.5f * (unit_direction.y() + 1.0f);
-        return (1.0f - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
+//        vec3 unit_direction = unit_vector(r.direction());
+//        float t = 0.5f * (unit_direction.y() + 1.0f);
+//        return (1.0f - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
+        return vec3(0, 0, 0);
     }
 }
 
@@ -75,52 +79,79 @@ __global__ void d_render(uchar4 *d_output, uint width, uint height, hitable **d_
         float green = col.y();
         float blue = col.z();
         d_output[i] = make_uchar4(red * 255, green * 255, blue * 255, 0);
+    }
 
+}
+
+extern "C"
+void onIdle() {
+    for (auto &sphere : spheres) {
+        sphere.move(0.005);
     }
 }
 
-extern "C"
-void initTexture(int imageWidth, int imageHeight, uchar *h_data) {
-    cudaResourceDesc texRes;
-    memset(&texRes, 0, sizeof(cudaResourceDesc));
-    texRes.resType = cudaResourceTypeArray;
-    texRes.res.array.array = d_imageArray;
-}
-
-extern "C"
-void freeTexture() {
-    checkCudaErrors(cudaFreeArray(d_imageArray));
-}
-
-__global__ void create_world(hitable **d_list, hitable **d_world) {
+__global__ void create_world(sphere *d_spheres, hitable **d_list, hitable **d_world) {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
-        *(d_list) = new sphere(vec3(0, 0, -1), 0.5);
-        *(d_list + 1) = new sphere(vec3(0, -100.5, -1), 100);
-        *d_world = new hitable_list(d_list, 2);
+
+//    int i = threadIdx.x + (blockDim.x * blockIdx.x);
+
+        for (int i = 0; i < PARTICLE_COUNT; i++) {
+            auto s = d_spheres[i];
+//            *(d_list + i) = &d_spheres[i];
+
+//            printf("%f\n", s.position.x());
+
+            *(d_list + i) = new sphere(s);
+        }
+
+        *d_world = new hitable_list(d_list, PARTICLE_COUNT);
     }
 }
 
 __global__ void free_world(hitable **d_list, hitable **d_world) {
-    delete *(d_list);
-    delete *(d_list + 1);
-    delete *d_world;
+    if (threadIdx.x == 0 && blockIdx.x == 0) {
+        for (int i = 0; i < PARTICLE_COUNT; i++) {
+            delete *(d_list + i);
+        }
+        delete *d_world;
+    }
 }
 
-// render image using CUDA
+__global__ void move_particles(sphere *d_spheres) {
+//    int i = threadIdx.x + (blockDim.x * blockIdx.x);
+//    d_spheres[i].move(1);
+}
+
 extern "C"
 void render(int width, int height, dim3 blockSize, dim3 gridSize, uchar4 *output) {
+    sphere *d_particleList;
+    checkCudaErrors(cudaMalloc((void **) &d_particleList, PARTICLE_COUNT * sizeof(sphere)));
+    checkCudaErrors(cudaMemcpy(d_particleList, spheres, PARTICLE_COUNT * sizeof(sphere), cudaMemcpyHostToDevice));
+
     // make our world of hitables
     hitable **d_list;
     checkCudaErrors(cudaMalloc((void **) &d_list, 2 * sizeof(hitable *)));
     hitable **d_world;
     checkCudaErrors(cudaMalloc((void **) &d_world, sizeof(hitable *)));
-    create_world << < 1, 1 >> > (d_list, d_world);
+
+    create_world <<< blocks, threadPerBlock >>>(d_particleList, d_list, d_world);
+
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
+//    move_particles <<< blocks, threadPerBlock >>>(d_particleList);
+//
+//    checkCudaErrors(cudaGetLastError());
+//    checkCudaErrors(cudaDeviceSynchronize());
+
     // call CUDA kernel, writing results to PBO memory
-    d_render << < gridSize, blockSize >> > (output, width, height, d_world);
+    d_render <<< gridSize, blockSize >>>(output, width, height, d_world);
     getLastCudaError("kernel failed");
+
+    free_world<<< blocks, threadPerBlock >>>(d_list, d_world);
+    getLastCudaError("kernel failed");
+
+    checkCudaErrors(cudaMemcpy(spheres, d_particleList, PARTICLE_COUNT * sizeof(sphere), cudaMemcpyDeviceToHost));
 }
 
 #define checkCudaErrors(val) check_cuda( (val), #val, __FILE__, __LINE__ )
