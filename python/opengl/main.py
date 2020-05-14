@@ -11,23 +11,30 @@ import OpenGL.GLUT as glut
 import numpy as np
 
 from opengl import WIDTH, HEIGHT, RANDOM, NUMBER_OF_PARTICLES, MOVEMENT_WORKER_THREADS, WINDOW_WIDTH, WINDOW_HEIGHT, \
-    SCALE_X, SCALE_Y
+    SCALE_X, SCALE_Y, RAY_CAST_WORKER_THREADS
+from opengl.caster import Caster
 from opengl.colour import Colour
+from opengl.ray import Ray
 from particle import Particle
 from particle.mode import ColourMode
 from particle.movement import Worker
 
 _PARTICLES_LOSE_VELOCITY = False
+_RAYCASTING = False
 
 _zeroes = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
 _frames = 0
 _gravity_queue = Queue(maxsize=1)
 _particles = []  # type: List[Particle]
+_rays = []  # type: List[Ray]
 
 colour_mode = ColourMode.SOLID
 
 fps = 0
 list_of_threads = []  # type: List[threading.Thread]
+canvas = _zeroes.copy()
+canvas_lock = threading.Lock()
+drawn_event = threading.Event()
 
 
 def set_colour_mode(mode: ColourMode):
@@ -52,7 +59,7 @@ def get_fps(_):
 
     fps = _frames
     _frames = 0
-    logging.info(f"fps: {fps}")
+    glut.glutSetWindowTitle(f"Python Particles - {fps}fps")
     glut.glutTimerFunc(1000, get_fps, 0)
 
 
@@ -72,26 +79,33 @@ def write_controls_text():
 
 
 def display_callback():
-    global _frames, _zeroes
-
-    canvas = _zeroes.copy()
+    global _frames, _zeroes, canvas
 
     gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
     gl.glLoadIdentity()
 
-    for p in _particles:
-        canvas[int(p.x)][int(p.y)] = p.colour.as_array()
+    if _RAYCASTING:
+        canvas_lock.acquire(blocking=True)
+        # print("drawing")
+
+    image = canvas.copy()
+    # canvas = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
+
+    if not _RAYCASTING:
+        for p in _particles:
+            image[int(p.x)][int(p.y)] = p.colour.as_array()
 
     gl.glRasterPos2i(-1, -1)
     gl.glPixelZoom(SCALE_X, SCALE_Y)
-    gl.glDrawPixels(WIDTH, HEIGHT, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, canvas)
-
-    # render_string(str(fps), get_coord(WIDTH - 40, WIDTH), get_coord(HEIGHT - 25, HEIGHT))
-    # write_controls_text()
-
+    gl.glDrawPixels(WIDTH, HEIGHT, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image)
     glut.glutSwapBuffers()
 
     _frames += 1
+    # canvas = _zeroes.copy()
+
+    if _RAYCASTING:
+        drawn_event.set()
+        canvas_lock.release()
 
 
 def reshape_callback(w: int, h: int):
@@ -137,6 +151,11 @@ def init_particles():
     list_of_threads.append(t)
     t.start()
 
+    if _RAYCASTING:
+        t = threading.Thread(target=init_rays, args=(), name="CastingThread")
+        list_of_threads.append(t)
+        t.start()
+
     t = threading.Thread(target=listen_for_gravity, args=(), name="GravityThread")
     list_of_threads.append(t)
     t.start()
@@ -145,6 +164,38 @@ def init_particles():
         t = threading.Thread(target=loss_of_velocity, args=(), name="VelocityLossThread")
         list_of_threads.append(t)
         t.start()
+
+
+def init_rays():
+    global canvas
+
+    for x in range(WIDTH):
+        for y in range(HEIGHT):
+            ray = Ray(np.array((255, 255, -255), dtype=np.float64),
+                      np.array((x + 0.5, y + 0.5, 0), dtype=np.float64) - np.array((255, 255, -255), dtype=np.float64),
+                      x,
+                      y)
+            _rays.append(ray)
+
+    workers = []
+    start_event = threading.Event()
+
+    for i in range(1, RAY_CAST_WORKER_THREADS + 1):
+        worker = Caster(i, start_event, _particles, _rays, canvas)
+        workers.append(worker)
+        worker.start()
+
+    while True:
+        drawn_event.wait()
+        drawn_event.clear()
+        canvas_lock.acquire(blocking=True)
+        # with canvas_lock:
+        # print("casting")
+        start_event.set()
+        for w in workers:
+            w.finished()
+        time.sleep(1)
+        canvas_lock.release()
 
 
 def handle_collisions(particle_combinations):
@@ -167,8 +218,8 @@ def move_particles():
         start_event.set()
         for w in workers:
             w.finished()
-        handle_collisions(particle_combinations)
-        time.sleep(0.01)
+        # handle_collisions(particle_combinations)
+        # time.sleep(0.01)
 
 
 def loss_of_velocity():

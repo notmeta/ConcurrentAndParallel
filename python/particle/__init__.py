@@ -10,9 +10,9 @@ from .mode import ColourMode
 class Particle(object):
 
     def __init__(self, x: int, y: int, vx: int, vy: int, colour: Colour):
-        self.r = np.array((x, y))
-        self.v = np.array((vx, vy))
-        self.radius = 1
+        self.r = np.array((x, y, y))
+        self.v = np.array((vx, vy, 0))
+        self.radius = 3
         self.mass = self.radius ** 2
 
         self.colour = colour
