@@ -13,6 +13,8 @@
 #define MIN_Z -40
 #define MAX_Z -10
 
+#define CENTER_OF_MASS vec3((MIN_X + MAX_X) / 2, (MIN_Y + MAX_Y) / 2, (MIN_Z + MAX_Z) / 2)
+
 float random(double minBound, double maxBound) {
     std::random_device rd;
     std::mt19937 mt(rd());
@@ -36,7 +38,6 @@ public:
         position = vec3(random(MIN_X, MAX_X), random(MIN_Y, MAX_Y), random(MIN_Z, MAX_Z));
         velocity = vec3(vr * cos(vphi), vr * sin(vphi), vr * cos(vphi));
         colour = make_uchar4(random(0, 255), random(0, 255), random(0, 255), 0);
-        originalColour = colour;
         radius = random(0.2, 1.5);
 //        radius = 0.1;
         mass = pow(radius, 2);
@@ -48,7 +49,7 @@ public:
 
     __device__ void boundaryCheck();
 
-    __device__ bool overlaps(sphere *other);
+    __device__ bool overlaps(sphere *other) const;
 
     __device__ void changeVelocities(sphere *other);
 
@@ -58,7 +59,6 @@ public:
     vec3 velocity;
     bool updated = false;
     uchar4 colour{};
-    uchar4 originalColour{};
     float radius;
     float mass;
 
@@ -141,7 +141,7 @@ __device__ void sphere::changeVelocities(sphere *other) {
     other->updated = true;
 }
 
-__device__ bool sphere::overlaps(sphere *other) {
+__device__ bool sphere::overlaps(sphere *other) const {
     auto rSquared = radius + other->radius;
     rSquared *= rSquared;
 
@@ -151,13 +151,17 @@ __device__ bool sphere::overlaps(sphere *other) {
 }
 
 __device__ uchar4 sphere::getColour(ColourMode mode) const {
-    auto col = min((abs(velocity.x() * 2) + abs(velocity.y() * 2) + abs(velocity.z() * 2)) * 250, 255.0);
-    col = max(col, 5.0);
+    auto vCol = min((abs(velocity.x() * 2) + abs(velocity.y() * 2) + abs(velocity.z() * 2)) * 250, 255.0);
+    vCol = max(vCol, 5.0);
+
+    auto dist = distance(position, CENTER_OF_MASS) * 10;
+    auto distanceColour = abs(dist - 255);
 
     switch (mode) {
         case VELOCITY:
-            return make_uchar4(col, col, col, 0);
-
+            return make_uchar4(vCol, vCol, vCol, 0);
+        case DISTANCE:
+            return make_uchar4(distanceColour, distanceColour, distanceColour, 0);
         case SOLID:
         default:
             return colour;

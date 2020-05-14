@@ -67,6 +67,10 @@ public:
 
     __host__ __device__ inline float squared_length() const { return e[0] * e[0] + e[1] * e[1] + e[2] * e[2]; }
 
+    __host__ __device__ inline vec3 absolute() const {
+        return {abs(x()), abs(y()), abs(z())};
+    }
+
     __host__ __device__ inline void make_unit_vector();
 
 
@@ -131,6 +135,19 @@ __host__ __device__ inline vec3 cross(const vec3 &v1, const vec3 &v2) {
     return vec3((v1.e[1] * v2.e[2] - v1.e[2] * v2.e[1]),
                 (-(v1.e[0] * v2.e[2] - v1.e[2] * v2.e[0])),
                 (v1.e[0] * v2.e[1] - v1.e[1] * v2.e[0]));
+}
+
+__host__ __device__ inline float distance(const vec3 &v1, const vec3 &v2) {
+    return sqrt(pow(v2.x() - v1.x(), 2) +
+                pow(v2.y() - v1.y(), 2) +
+                pow(v2.z() - v1.z(), 2));
+}
+
+__host__ __device__ inline vec3 hypot(const vec3 &v1, const vec3 &v2) {
+    auto x = std::hypot(v1.x(), v2.x());
+    auto y = std::hypot(v1.y(), v2.y());
+    auto z = std::hypot(v1.z(), v2.z());
+    return {x, y, z};
 }
 
 
