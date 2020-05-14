@@ -4,11 +4,11 @@
 #include <random>
 #include "hitable.h"
 
-#define MIN_X -15
-#define MAX_X 15
+#define MIN_X -20
+#define MAX_X 20
 
-#define MIN_Y -18
-#define MAX_Y 12
+#define MIN_Y -25
+#define MAX_Y 17
 
 #define MIN_Z -40
 #define MAX_Z -10
