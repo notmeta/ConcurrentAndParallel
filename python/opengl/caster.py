@@ -32,5 +32,7 @@ class Caster(threading.Thread):
                 for ray in rays:
                     if ray.does_hit_sphere(p.r, p.radius):
                         canvas[ray.X][ray.Y] = p.colour.as_array()
+                    else:
+                        canvas[ray.X][ray.Y] = [0, 0, 0, 0]
 
             self._finished_event.set()
