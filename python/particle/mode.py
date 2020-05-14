@@ -2,5 +2,7 @@ from enum import Enum
 
 
 class ColourMode(Enum):
-    SOLID = 0
-    VELOCITY = 1
+    SOLID = 1
+    VELOCITY = 2
+
+    DISTANCE = 3

@@ -108,10 +108,13 @@ def keyboard_callback(key, x, y):
         sys.exit()
     elif key == b'g':
         _gravity_queue.put(1, block=False)
+
     elif key == b'1':
-        set_colour_mode(ColourMode.VELOCITY)
-    elif key == b'0':
         set_colour_mode(ColourMode.SOLID)
+    elif key == b'2':
+        set_colour_mode(ColourMode.VELOCITY)
+    elif key == b'3':
+        set_colour_mode(ColourMode.DISTANCE)
 
 
 def init_particles():

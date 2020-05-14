@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 
 from opengl import WIDTH, HEIGHT
@@ -16,6 +18,10 @@ class Particle(object):
         self.colour = colour
         self._solid_colour = colour
         self._colour_mode = ColourMode.SOLID
+
+        self._mid_x = int(WIDTH / 2)
+        self._mid_y = int(HEIGHT / 2)
+        self._max_dist = int(math.sqrt(self._mid_x ** 2 + self._mid_y ** 2))
 
     @property
     def x(self):
@@ -79,3 +85,12 @@ class Particle(object):
             col = max(col, 50)
 
             self.colour = Colour(col, col, col)
+
+        elif self._colour_mode == ColourMode.DISTANCE:
+            x_dist = abs(self._mid_x - self.x)
+            y_dist = abs(self._mid_y - self.y)
+
+            dist = int(math.sqrt(x_dist ** 2 + y_dist ** 2))
+            dist = abs(dist - 255)
+
+            self.colour = Colour(dist, dist, dist)
