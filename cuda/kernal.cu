@@ -34,6 +34,7 @@
 #define BACKGROUND_COLOUR make_uchar4(0, 0, 0, 0)
 #define PARTICLES_COLLIDE true
 
+bool gravityEnabled = false;
 sphere spheres[PARTICLE_COUNT];
 uint threadPerBlock = 25;
 uint blocks = PARTICLE_COUNT / threadPerBlock;
@@ -92,9 +93,24 @@ extern "C"
 void onIdle() {
 }
 
+extern "C"
+void setGravity(bool enabled) {
+    gravityEnabled = enabled;
+}
+
 __global__ void move_particles(sphere *d_spheres) {
     int i = threadIdx.x + (blockDim.x * blockIdx.x);
     d_spheres[i].move(0.5);
+}
+
+__global__ void applyGravity(sphere *d_spheres) {
+    int i = threadIdx.x + (blockDim.x * blockIdx.x);
+
+    auto v = d_spheres[i].velocity;
+//    d_spheres[i].velocity -= vec3(0, 0.6, 0);
+    d_spheres[i].velocity = vec3(0, -3, 0);
+    d_spheres[i].move(0.5);
+    d_spheres[i].velocity = v;
 }
 
 __global__ void handleCollisions(sphere *d_spheres) {
@@ -131,6 +147,12 @@ void render(int width, int height, dim3 blockSize, dim3 gridSize, uchar4 *output
 
     if (PARTICLES_COLLIDE) {
         handleCollisions <<< blocks, threadPerBlock >>>(d_particleList);
+        checkCudaErrors(cudaGetLastError());
+        checkCudaErrors(cudaDeviceSynchronize());
+    }
+
+    if (gravityEnabled) {
+        applyGravity <<< blocks, threadPerBlock >>>(d_particleList);
         checkCudaErrors(cudaGetLastError());
         checkCudaErrors(cudaDeviceSynchronize());
     }

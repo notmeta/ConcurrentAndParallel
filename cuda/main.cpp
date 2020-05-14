@@ -120,6 +120,7 @@ void cleanup();
 extern "C" void initGL(int *argc, char **argv);
 
 extern "C" void onIdle();
+extern "C" void setGravity(bool enabled);
 
 extern "C" void render(int width, int height, dim3 blockSize, dim3 gridSize, uchar4 *output);
 
@@ -218,7 +219,7 @@ void display() {
     glutReportErrors();
 
     sdkStopTimer(&timer);
-
+    setGravity(false);
     computeFPS();
 }
 
@@ -244,6 +245,10 @@ void keyboard(unsigned char key, int /*x*/, int /*y*/) {
 
         case '-':
             scale *= 2.0f;
+            break;
+
+        case 'g':
+            setGravity(true);
             break;
 
         case 'r':
