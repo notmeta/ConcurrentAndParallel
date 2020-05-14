@@ -32,17 +32,19 @@
 
 #define PARTICLE_COUNT 200
 #define BACKGROUND_COLOUR make_uchar4(0, 0, 0, 0)
-#define PARTICLES_COLLIDE true
+#define PARTICLES_COLLIDE false
 
 bool gravityEnabled = false;
 sphere spheres[PARTICLE_COUNT];
-uint threadPerBlock = 25;
+ColourMode mode = SOLID;
+
+uint threadPerBlock = 20;
 uint blocks = PARTICLE_COUNT / threadPerBlock;
 
 typedef unsigned int uint;
 typedef unsigned char uchar;
 
-__device__ uchar4 castRay(const ray &r, sphere *d_spheres) {
+__device__ uchar4 castRay(const ray &r, sphere *d_spheres, ColourMode d_mode) {
     hit_record rec;
     uchar4 colour;
     bool hitSomething = false;
@@ -50,7 +52,7 @@ __device__ uchar4 castRay(const ray &r, sphere *d_spheres) {
 
     for (int i = 0; i < PARTICLE_COUNT; i++) {
         if (d_spheres[i].hit(r, 0, closestParticleSoFar, rec)) {
-            colour = d_spheres[i].colour;
+            colour = d_spheres[i].getColour(d_mode);
             hitSomething = true;
             closestParticleSoFar = rec.t;
             rec = rec;
@@ -64,7 +66,7 @@ __device__ uchar4 castRay(const ray &r, sphere *d_spheres) {
     }
 }
 
-__global__ void d_render(uchar4 *d_output, uint width, uint height, sphere *d_spheres) {
+__global__ void d_render(uchar4 *d_output, uint width, uint height, sphere *d_spheres, ColourMode d_mode) {
     uint x = blockIdx.x * blockDim.x + threadIdx.x;
     uint y = blockIdx.y * blockDim.y + threadIdx.y;
     uint i = y * width + x;
@@ -85,7 +87,7 @@ __global__ void d_render(uchar4 *d_output, uint width, uint height, sphere *d_sp
         r.O = eye;
         r.Dir = pixelPos - eye;
         //view direction along negtive z-axis!
-        d_output[i] = castRay(r, d_spheres);
+        d_output[i] = castRay(r, d_spheres, d_mode);
     }
 }
 
@@ -96,6 +98,13 @@ void onIdle() {
 extern "C"
 void setGravity(bool enabled) {
     gravityEnabled = enabled;
+}
+
+extern "C"
+void setColourMode(int cMode) {
+    cMode -= 48;
+    mode = static_cast<ColourMode>(cMode);
+    printf("Setting colour mode to %d\n", mode);
 }
 
 __global__ void move_particles(sphere *d_spheres) {
@@ -141,7 +150,7 @@ void render(int width, int height, dim3 blockSize, dim3 gridSize, uchar4 *output
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
-    d_render <<< gridSize, blockSize >>>(output, width, height, d_particleList);
+    d_render <<< gridSize, blockSize >>>(output, width, height, d_particleList, mode);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 

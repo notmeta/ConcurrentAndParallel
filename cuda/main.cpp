@@ -121,6 +121,7 @@ extern "C" void initGL(int *argc, char **argv);
 
 extern "C" void onIdle();
 extern "C" void setGravity(bool enabled);
+extern "C" void setColourMode(int cMode);
 
 extern "C" void render(int width, int height, dim3 blockSize, dim3 gridSize, uchar4 *output);
 
@@ -266,6 +267,10 @@ void keyboard(unsigned char key, int /*x*/, int /*y*/) {
 
         default:
             break;
+    }
+
+    if (key >= '0' && key <= '5') {
+        setColourMode(key);
     }
 
 }

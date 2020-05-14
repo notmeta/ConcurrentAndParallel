@@ -21,6 +21,12 @@ float random(double minBound, double maxBound) {
     return dist(mt);
 }
 
+enum ColourMode {
+    SOLID,
+    VELOCITY,
+    DISTANCE
+};
+
 class sphere {
 public:
     sphere() {
@@ -31,7 +37,8 @@ public:
         velocity = vec3(vr * cos(vphi), vr * sin(vphi), vr * cos(vphi));
         colour = make_uchar4(random(0, 255), random(0, 255), random(0, 255), 0);
         originalColour = colour;
-        radius = random(0.5, 2);
+        radius = random(0.2, 1.5);
+//        radius = 0.1;
         mass = pow(radius, 2);
     };
 
@@ -44,6 +51,8 @@ public:
     __device__ bool overlaps(sphere *other);
 
     __device__ void changeVelocities(sphere *other);
+
+    __device__ uchar4 getColour(ColourMode mode) const;
 
     vec3 position;
     vec3 velocity;
@@ -139,6 +148,20 @@ __device__ bool sphere::overlaps(sphere *other) {
     auto delta = other->position - position;
 
     return dot(delta, delta) < rSquared;
+}
+
+__device__ uchar4 sphere::getColour(ColourMode mode) const {
+    auto col = min((abs(velocity.x() * 2) + abs(velocity.y() * 2) + abs(velocity.z() * 2)) * 250, 255.0);
+    col = max(col, 5.0);
+
+    switch (mode) {
+        case VELOCITY:
+            return make_uchar4(col, col, col, 0);
+
+        case SOLID:
+        default:
+            return colour;
+    }
 }
 
 
