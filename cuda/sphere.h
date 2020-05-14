@@ -13,6 +13,8 @@
 #define MIN_Z -40
 #define MAX_Z -10
 
+#define FIRE_MODE true
+
 #define CENTER_OF_MASS vec3((MIN_X + MAX_X) / 2, (MIN_Y + MAX_Y) / 2, (MIN_Z + MAX_Z) / 2)
 
 float random(double minBound, double maxBound) {
@@ -38,7 +40,7 @@ public:
         position = vec3(random(MIN_X, MAX_X), random(MIN_Y, MAX_Y), random(MIN_Z, MAX_Z));
         velocity = vec3(vr * cos(vphi), vr * sin(vphi), vr * cos(vphi));
         colour = make_uchar4(random(0, 255), random(0, 255), random(0, 255), 0);
-        radius = random(0.2, 1.5);
+        radius = random(0.1, 1.3);
 //        radius = 0.1;
         mass = pow(radius, 2);
     };
@@ -152,16 +154,20 @@ __device__ bool sphere::overlaps(sphere *other) const {
 
 __device__ uchar4 sphere::getColour(ColourMode mode) const {
     auto vCol = min((abs(velocity.x() * 2) + abs(velocity.y() * 2) + abs(velocity.z() * 2)) * 250, 255.0);
-    vCol = max(vCol, 5.0);
+    vCol = max(vCol, 10.0);
 
-    auto dist = distance(position, CENTER_OF_MASS) * 10;
+    auto dist = min(255, max((int) distance(position, CENTER_OF_MASS) * 11, 0));
     auto distanceColour = abs(dist - 255);
 
     switch (mode) {
         case VELOCITY:
             return make_uchar4(vCol, vCol, vCol, 0);
         case DISTANCE:
-            return make_uchar4(distanceColour, distanceColour, distanceColour, 0);
+            if (distanceColour >= 150 && FIRE_MODE) {
+                return make_uchar4(0, 265 - pow((255 - distanceColour), 1.15), 255, 0);
+            } else {
+                return make_uchar4(distanceColour, distanceColour, distanceColour, 0);
+            }
         case SOLID:
         default:
             return colour;

@@ -30,7 +30,7 @@
 // includes, cuda
 #include <helper_cuda.h>
 
-#define PARTICLE_COUNT 200
+#define PARTICLE_COUNT 2000
 #define BACKGROUND_COLOUR make_uchar4(0, 0, 0, 0)
 #define PARTICLES_COLLIDE false
 
@@ -38,7 +38,7 @@ bool gravityEnabled = false;
 sphere spheres[PARTICLE_COUNT];
 ColourMode mode = SOLID;
 
-uint threadPerBlock = 20;
+uint threadPerBlock = 25;
 uint blocks = PARTICLE_COUNT / threadPerBlock;
 
 typedef unsigned int uint;
