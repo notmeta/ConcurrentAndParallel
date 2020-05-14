@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 
-from opengl import WIDTH, HEIGHT
+from opengl import WIDTH, HEIGHT, PARTICLE_COLLISIONS
 from opengl.colour import Colour
 from .mode import ColourMode
 
@@ -10,9 +10,14 @@ from .mode import ColourMode
 class Particle(object):
 
     def __init__(self, x: int, y: int, vx: int, vy: int, colour: Colour):
-        self.r = np.array((x, y, y))
-        self.v = np.array((vx, vy, 0))
-        self.radius = 3
+        if not PARTICLE_COLLISIONS:
+            self.r = np.array((x, y, y))
+            self.v = np.array((vx, vy, 0))
+            self.radius = 3
+        else:
+            self.r = np.array((x, y))
+            self.v = np.array((vx, vy))
+            self.radius = 1
         self.mass = self.radius ** 2
 
         self.colour = colour

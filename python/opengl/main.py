@@ -11,7 +11,7 @@ import OpenGL.GLUT as glut
 import numpy as np
 
 from opengl import WIDTH, HEIGHT, RANDOM, NUMBER_OF_PARTICLES, MOVEMENT_WORKER_THREADS, WINDOW_WIDTH, WINDOW_HEIGHT, \
-    SCALE_X, SCALE_Y, RAY_CAST_WORKER_THREADS
+    SCALE_X, SCALE_Y, RAY_CAST_WORKER_THREADS, PARTICLE_COLLISIONS
 from opengl.caster import Caster
 from opengl.colour import Colour
 from opengl.ray import Ray
@@ -89,7 +89,7 @@ def display_callback():
         # print("drawing")
 
     image = canvas.copy()
-    # canvas = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
+    canvas = np.zeros((WIDTH, HEIGHT, 4), dtype=np.ubyte)
 
     if not _RAYCASTING:
         for p in _particles:
@@ -218,8 +218,9 @@ def move_particles():
         start_event.set()
         for w in workers:
             w.finished()
-        # handle_collisions(particle_combinations)
-        # time.sleep(0.01)
+        if PARTICLE_COLLISIONS:
+            handle_collisions(particle_combinations)
+            # time.sleep(0.01)
 
 
 def loss_of_velocity():
@@ -253,7 +254,7 @@ def change_velocities(p1, p2):
     p2.v = u2
 
 
-if __name__ == "__main__":
+def run():
     logging.basicConfig(format="%(asctime)s [%(threadName)s] | %(message)s", level=logging.INFO, datefmt="%H:%M:%S")
 
     logging.info(f"Number of particles: {NUMBER_OF_PARTICLES}")
